@@ -168,7 +168,14 @@ namespace ConsoleUpdate
 
                 while (reader.Read())
                 {
-                    request.chiefEmail = reader.GetString(0);
+                    if (!reader.IsDBNull(0))
+                    {
+                        request.chiefEmail = reader.GetString(0);
+                    }
+                    else
+                    {
+                        request.chiefEmail = null;
+                    }
 
                 }
             }

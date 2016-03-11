@@ -92,9 +92,19 @@ namespace ConsoleUpdate
                                             Console.WriteLine("Enviando correo a solicitante");
                                             mail.sendAuthorizationEmail(emailContent, request.uuid, request.society.ToString());
                                             dbAccess.getChiefEmail(request);
-                                            mail.from = request.chiefEmail;
-                                            Console.WriteLine("Enviando correo a jefe directo");
-                                            mail.sendAuthorizationEmail(emailContent, request.uuid, request.society.ToString());
+                                            //Checks for consistency in relation with the authorization process
+                                            if (request.chiefEmail != null)
+                                            {
+                                                mail.from = request.chiefEmail;
+                                                Console.WriteLine("Enviando correo a jefe directo");
+                                                mail.sendAuthorizationEmail(emailContent, request.uuid, request.society.ToString());
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("Error: falta de asociatividad con jefe directo.");
+                                               
+                                                mail.sendErrorEmail("No se encontro asociacion para sociedad: "+ request.society.ToString());
+                                            }
                                             Console.WriteLine("Termina con solicitud");
                                             //Deletes from pending
                                             dbAccess.deletePending(request.uuid);

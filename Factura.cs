@@ -26,8 +26,7 @@ namespace ConsoleUpdate
         }
         public Factura()
         {
-        }
-        
+        }   
         public Factura(String addedAt, String Uuid,String senderMail)
         {
             timeAdded = addedAt;
@@ -46,11 +45,11 @@ namespace ConsoleUpdate
             switch (comprobacion.status.ToLower())
             {
                 case "s - com"://Found on SAT database
-                    if (comprobacion.code.Equals("Cancelado"))
+                    if (comprobacion.code.Equals("Cancelado"))//Found but is cancelled
                     {
                         state = 3;
                     }
-                    else
+                    else//All good
                     {
                         state = 1;
                     }
