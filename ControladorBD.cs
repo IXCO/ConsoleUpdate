@@ -9,7 +9,7 @@ namespace ConsoleUpdate
     class ControladorBD
     {
 
-        public MySqlConnection connection;
+        private MySqlConnection connection;
         public ControladorBD()
         {
             connection = new MySqlConnection();
@@ -109,6 +109,27 @@ namespace ConsoleUpdate
             }
             connection.Close();
             return success;
+        }
+        public void deleteInvalidRecurrent()
+        {
+            connection.Open();
+            
+            String statement = "DELETE FROM gasto_recurrente WHERE cc_fkey = 0 AND trans_fkey = 0;";
+            try
+            {
+                MySqlCommand command = new MySqlCommand(statement, connection);
+                command.ExecuteNonQuery();
+            }
+            catch (MySqlException)
+            {
+                
+            }
+            finally
+            {
+                connection.Dispose();
+            }
+            connection.Close();
+            
         }
         public Solicitud getRequestMain(Factura invoice)
         {

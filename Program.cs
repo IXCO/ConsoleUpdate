@@ -102,7 +102,7 @@ namespace ConsoleUpdate
                                             else
                                             {
                                                 Console.WriteLine("Error: falta de asociatividad con jefe directo.");
-                                               
+                                                mail.from = "ana.arellano@ixco.com.mx";
                                                 mail.sendErrorEmail("No se encontro asociacion para sociedad: "+ request.society.ToString());
                                             }
                                             Console.WriteLine("Termina con solicitud");
@@ -169,6 +169,8 @@ namespace ConsoleUpdate
                 }
                 Console.WriteLine("Siguiente registro.");
             }
+            //Deletes invalid registries on db
+            dbAccess.deleteInvalidRecurrent();
             Console.WriteLine("Terminando tarea.");
            
         }
