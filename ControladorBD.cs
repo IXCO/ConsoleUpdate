@@ -238,8 +238,24 @@ namespace ConsoleUpdate
             }
             connection.Close();
         }
-       
 
+        public void updateUsers()
+        {
+            String statement = "UPDATE factaprobada_cuentacontable SET us_fkey = 19 WHERE us_fkey IS NOT NULL AND acepto = 1;";
+            connection.Open();
+            try
+            {
+                MySqlCommand command = new MySqlCommand(statement, connection);
+                command.ExecuteNonQuery();
+            }
+            catch (MySqlException)
+            { }
+            finally
+            {
+                connection.Dispose();
+            }
+            connection.Close();
+        }
         public Boolean existenceRequest(Solicitud request)
         {
             Boolean exist = false;

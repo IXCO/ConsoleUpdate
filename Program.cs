@@ -169,8 +169,11 @@ namespace ConsoleUpdate
                 }
                 Console.WriteLine("Siguiente registro.");
             }
+            Console.WriteLine("Haciendo tareas adicionales.");
             //Deletes invalid registries on db
             dbAccess.deleteInvalidRecurrent();
+            //Update correct information of users
+            dbAccess.updateUsers();
             Console.WriteLine("Terminando tarea.");
            
         }
