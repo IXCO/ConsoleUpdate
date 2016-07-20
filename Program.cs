@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using RestSharp;
+using NLog;
 namespace ConsoleUpdate
 {
     class Program
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         static Boolean isExpired(String date)
         {
             date = date.Substring(0, 2);
@@ -38,13 +40,13 @@ namespace ConsoleUpdate
         }
         static void Main(string[] args)
         {
-            Console.WriteLine("Actualización de estatus para pendientes.");
+            Logger.Info("Actualización de estatus para pendientes.");
             //Initializers
             ControladorBD dbAccess = new ControladorBD();
             Email mail = new Email();
             //Get information from db
             Factura[] pendingInvoices = dbAccess.getPendings();
-            Console.WriteLine("Iniciando busqueda...");
+            Logger.Debug("Iniciando busqueda...");
             //Checks for pending invoices
             foreach (Factura pending in pendingInvoices)
             {
@@ -55,126 +57,141 @@ namespace ConsoleUpdate
                     //Gets data for further use, this means the exportation by Exult was successfully done
                     Factura invoice = dbAccess.getInvoiceData(pending.uuid);
                     mail = new Email(pending.email, pending.timeAdded);
+                    //If there was a successful exportation from Exult to DB, this is not going to be null
                     if (invoice != null)
                     {
                         //Checks time receive is lower than 7 days
                         if (!isExpired(pending.timeAdded))
                         {
-                            Console.WriteLine("Procesando revision con SAT...");
+                            Logger.Debug("Procesando revision con SAT...");
                             //Gets status on SAT webservice
                             switch (invoice.statusOnSAT())
                             {
                                 case 0: //Mistake at connection
                                 case 2://Pending
-                                    Console.WriteLine("Actualizando estatus como pendiente...");
+                                    Logger.Info("Actualizando estatus como pendiente...");
                                     dbAccess.updatePending(invoice.uuid);
                                     break;
                                 case 1: //Successful
 
-                                    Console.WriteLine("Exito! Todas las validaciones pasaron.");
+                                    Logger.Info("Exito! Todas las validaciones pasaron.");
                                     //Starts authorization section
                                     Solicitud request = dbAccess.getRequestMain(invoice);
                                     //If there is information to relate the invoice to a requester this proceeds
                                     if (request != null)
                                     {
-                                        Console.WriteLine("Inicia revisión para generar solictud...");
+                                        Logger.Debug("Inicia revisión para generar solictud...");
                                         //Checks for duplicity
                                         if (!dbAccess.existenceRequest(request))
                                         {
                                             //Send email to requester and direct chief, according to society and department.
                                             String emailContent = "La factura No. " + request.invoiceNo + " del proveedor " + request.sender +
                                             "por un total de: $" + request.total + " ha sido recibida y validada, por lo que se generó una solicitud de egresos.";
-                                            Console.WriteLine("Agregando solicitud a BD");
+                                            Logger.Debug("Agregando solicitud a BD");
                                             //Adds invoice to tables of request, this triggers further functionality 
                                             dbAccess.insertRequest(request);
                                             dbAccess.getRequesterEmail(request);
                                             mail.from = request.requesterEmail;
-                                            Console.WriteLine("Enviando correo a solicitante");
-                                            mail.sendAuthorizationEmail(emailContent, request.uuid, request.society.ToString());
+                                            //Sending authorization email for direct responsable
+                                            Logger.Debug("Enviando correo a solicitante");
+                                            mail.subject = "Solicitud de aprobación";
+                                            mail.sendComposeMail(emailContent, request.uuid, request.society.ToString());
                                             dbAccess.getChiefEmail(request);
                                             //Checks for consistency in relation with the authorization process
                                             if (request.chiefEmail != null)
                                             {
+                                                //Send authorization email to the chief of the responsable user
                                                 mail.from = request.chiefEmail;
-                                                Console.WriteLine("Enviando correo a jefe directo");
-                                                mail.sendAuthorizationEmail(emailContent, request.uuid, request.society.ToString());
+                                                Logger.Debug("Enviando correo a jefe directo");
+                                                mail.subject = "Solicitud de aprobación";
+                                                mail.sendComposeMail(emailContent, request.uuid, request.society.ToString());
+                                                
                                             }
                                             else
                                             {
-                                                Console.WriteLine("Error: falta de asociatividad con jefe directo.");
-                                                mail.from = "ana.arellano@ixco.com.mx";
-                                                mail.sendErrorEmail("No se encontro asociacion para sociedad: "+ request.society.ToString());
+                                                //Sending error notification email to admin
+                                                Logger.Warn("Error: falta de asociatividad con jefe directo.");
+                                                //NOTE: This email has to be updated accordingly
+                                                mail.from = mail.adminAccount;
+                                                mail.subject = "Error de recepción";
+                                                mail.sendComposeMail("No se encontro asociacion para sociedad: " + request.society.ToString(),"","");
+                                                
                                             }
-                                            Console.WriteLine("Termina con solicitud");
+                                            Logger.Debug("Termina con solicitud");
                                             //Deletes from pending
                                             dbAccess.deletePending(request.uuid);
                                         }
                                         else
-                                        {//If the requester was already notify then just delete from pending
+                                        {//If the requester was already notify then just delete invoice from pending
                                             dbAccess.deletePending(request.uuid);
-                                            Console.WriteLine("Factura ya solicitada.");
-                                            Console.WriteLine("Borrando de pendientes...");
+                                            Logger.Info("Factura ya solicitada.");
+                                            Logger.Debug("Borrando de pendientes...");
                                         }
                                     }
                                     else {//Just erase from pending
                                         dbAccess.deletePending(pending.uuid);
-                                        Console.WriteLine("No existe información para solicitud.");
-                                        Console.WriteLine("Borrando de pendientes...");
+                                        Logger.Info("No existe información para solicitud.");
+                                        Logger.Debug("Borrando de pendientes...");
                                     }
                                     break;
                                 case 3://Canceled
                                     //Reports error on DB and by mail
                                     dbAccess.deletePending(invoice.uuid);
                                     dbAccess.insertCanceled(invoice.uuid, invoice.recepientRFC, invoice.senderRFC, invoice.folio);
-                                    Console.WriteLine("Error: Comprobante cancelado");
-                                    Console.WriteLine("Enviando correo de error...");
-                                    mail.sendErrorEmail("El comprobante que mando NO fue aceptado, debido a que se encuentra cancelado ante el SAT.");
+                                    Logger.Info("Error: Comprobante cancelado");
+                                    Logger.Debug("Enviando correo de error...");
+                                    mail.subject = "Error de recepción";
+                                    mail.sendComposeMail("El comprobante que mando NO fue aceptado, debido a que se encuentra cancelado ante el SAT.", "", "");
+                                    //mail.sendErrorEmail("El comprobante que mando NO fue aceptado, debido a que se encuentra cancelado ante el SAT.");
 
                                     break;
                                 case 4://Incorrect
                                     //Reports error on DB and by mail
                                     dbAccess.deletePending(invoice.uuid);
                                     dbAccess.insertCanceled(invoice.uuid, invoice.recepientRFC, invoice.senderRFC, invoice.folio);
-                                    Console.WriteLine("Error: Comprobante incorrecto ante el SAT");
-                                    Console.WriteLine("Enviando correo de error...");
-                                    mail.sendErrorEmail("El comprobante que mando NO fue aceptado, debido a que el SAT lo marca como incorrecto.");
-
+                                    Logger.Info("Error: Comprobante incorrecto ante el SAT");
+                                    Logger.Debug("Enviando correo de error...");
+                                    mail.subject = "Error de recepción";
+                                    mail.sendComposeMail("El comprobante que mando NO fue aceptado, debido a que el SAT lo marca como incorrecto.", "", "");
+                                    //mail.sendErrorEmail("El comprobante que mando NO fue aceptado, debido a que el SAT lo marca como incorrecto.");
                                     break;
                                 default:
                                     break;
                             }
-                        }//If the time span that the invoice has been pending is higher than 7 days
+                        }//If the time span that the invoice has been pending is higher than 7 days, it is deleted from pending.
                         else
                         {
-                            Console.WriteLine("Error: Tiempo limite de vida pasa de 7 dias");
-                            Console.WriteLine("Borrando de pendientes y enviando correo a proveedor...");
+                            Logger.Info("Error: Tiempo limite de vida pasa de 7 dias");
+                            Logger.Debug("Borrando de pendientes y enviando correo a proveedor...");
                             dbAccess.deletePending(invoice.uuid);
                             dbAccess.insertCanceled(invoice.uuid, invoice.recepientRFC, invoice.senderRFC, invoice.folio);
                             
                         }
-                    }//If there is no information for the specific invoice
+                    }//If there is no information for the specific invoice (Possible incorrect Exult exportation)
                     else
                     {
-                        Console.WriteLine("Error: Información no encontrada");
-                        Console.WriteLine("Borrando de pendientes ...");
+                        Logger.Info("Error: Información no encontrada");
+                        Logger.Debug("Borrando de pendientes ...");
                         dbAccess.deletePending(pending.uuid);
                         dbAccess.insertCanceled(pending.uuid, "", "","");
                        
                     }
-                }//Empty registries
+                }//Empty registries so it need to get out of loop
                 else
                 {
-                    Console.WriteLine("Sin más registros a procesar.");
+                    Logger.Info("Sin más registros a procesar.");
                     break;
                 }
-                Console.WriteLine("Siguiente registro.");
+                Logger.Debug("Siguiente registro.");
             }
-            Console.WriteLine("Haciendo tareas adicionales.");
+            //Aditional consistency check on DB
+            Logger.Info("Haciendo tareas adicionales.");
             //Deletes invalid registries on db
             dbAccess.deleteInvalidRecurrent();
-            //Update correct information of users
+            //Update correct information of finance's users
             dbAccess.updateUsers();
-            Console.WriteLine("Terminando tarea.");
+            Logger.Info("Terminando tarea.");
+            
            
         }
     }

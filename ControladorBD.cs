@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
+using NLog;
 namespace ConsoleUpdate
 {
     class ControladorBD
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         private MySqlConnection connection;
         public ControladorBD()
@@ -38,9 +40,10 @@ namespace ConsoleUpdate
                 }
                 
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
-
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
             }
             finally
             {
@@ -78,8 +81,11 @@ namespace ConsoleUpdate
                 }
                 
             }
-            catch (MySqlException)
-            {            }
+            catch (MySqlException ex)
+            {
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+            }
             finally
             {
                 connection.Dispose();
@@ -99,8 +105,11 @@ namespace ConsoleUpdate
                 MySqlCommand command = new MySqlCommand(statement, connection);
                 command.ExecuteNonQuery();
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
                 success = false;
             }
             finally
@@ -120,9 +129,11 @@ namespace ConsoleUpdate
                 MySqlCommand command = new MySqlCommand(statement, connection);
                 command.ExecuteNonQuery();
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
-                
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
             }
             finally
             {
@@ -161,9 +172,10 @@ namespace ConsoleUpdate
                 }
                 
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
-
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
             }
             finally
             {
@@ -200,9 +212,11 @@ namespace ConsoleUpdate
 
                 }
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
-
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
             }
             finally
             {
@@ -228,9 +242,11 @@ namespace ConsoleUpdate
                     request.department = reader.GetString(1);
                 }
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
-
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
             }
             finally
             {
@@ -241,15 +257,19 @@ namespace ConsoleUpdate
 
         public void updateUsers()
         {
-            String statement = "UPDATE factaprobada_cuentacontable SET us_fkey = 19 WHERE us_fkey IS NOT NULL AND acepto = 1;";
+            String statement = "UPDATE factaprobada_cuentacontable SET us_fkey = 19 WHERE us_fkey IS NOT NULL AND us_fkey = 24 AND acepto = 1;";
             connection.Open();
             try
             {
                 MySqlCommand command = new MySqlCommand(statement, connection);
                 command.ExecuteNonQuery();
             }
-            catch (MySqlException)
-            { }
+            catch (MySqlException ex)
+            {
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
+            }
             finally
             {
                 connection.Dispose();
@@ -271,9 +291,10 @@ namespace ConsoleUpdate
                 }
 
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
-
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
             }
             finally
             {
@@ -292,8 +313,12 @@ namespace ConsoleUpdate
                 MySqlCommand command = new MySqlCommand(statement, connection);
                 command.ExecuteNonQuery();
             }
-            catch (MySqlException)
-            { }
+            catch (MySqlException ex)
+            {
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
+            }
             finally
             {
                 connection.Dispose();
@@ -310,8 +335,12 @@ namespace ConsoleUpdate
                 MySqlCommand command = new MySqlCommand(statement, connection);
                 command.ExecuteNonQuery();
             }
-            catch (MySqlException)
-            { }
+            catch (MySqlException ex)
+            {
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
+            }
             finally
             {
                 connection.Dispose();
@@ -329,8 +358,11 @@ namespace ConsoleUpdate
                 MySqlCommand command = new MySqlCommand(statement, connection);
                 command.ExecuteNonQuery();
             }
-            catch (MySqlException)
+            catch (MySqlException ex)
             {
+                Logger.Warn("Error en conexión a MYSQL");
+                Logger.Warn(ex.Message);
+                Logger.Error(statement);
                 success = false;
             }
             finally
